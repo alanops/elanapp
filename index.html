@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Elan's Maths</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600;700&family=Fredoka:wght@500;600;700&display=swap">
+<style>
+  /* ============ Reading-comfort themes ============ */
+  :root {
+    --bg: #F7F3EB;          /* warm oat paper — low glare */
+    --card: #FFFDF8;
+    --ink: #33302A;
+    --ink-soft: #6B6558;
+    --line: #E8E1D3;
+    --teal: #0E8F8B;
+    --teal-deep: #0A6B68;
+    --teal-soft: #DDF0EF;
+    --amber: #F2A93B;
+    --amber-soft: #FCEBCB;
+    --rose: #D96C7B;
+    --rose-soft: #F9E3E6;
+    --violet: #7A6BB5;
+    --violet-soft: #E9E4F6;
+    --green: #5A9E52;
+    --green-soft: #E2F0DF;
+    --shadow: 0 2px 10px rgba(80,70,50,.08), 0 1px 3px rgba(80,70,50,.06);
+    --radius: 22px;
+  }
+  [data-comfort="sky"] {
+    --bg: #EAF2F8; --card: #F8FBFE; --line: #D5E3EE; --ink: #2C333A; --ink-soft: #5E6B77;
+    --teal-soft: #D6EBEA; --amber-soft: #F8E9CE;
+  }
+  [data-comfort="mint"] {
+    --bg: #EAF4EC; --card: #F7FCF8; --line: #D6E7DA; --ink: #2C3630; --ink-soft: #5D6E63;
+    --teal-soft: #D8EEEA; --amber-soft: #F8ECCF;
+  }
+  [data-comfort="night"] {
+    --bg: #23262E; --card: #2E323C; --line: #3E434F; --ink: #EDE9DF; --ink-soft: #A9A493;
+    --teal: #3FB8B3; --teal-deep: #62CCC7; --teal-soft: #1E4A48;
+    --amber: #F2B45C; --amber-soft: #4A3A20;
+    --rose: #E08A97; --rose-soft: #4A3034;
+    --violet: #9C8FD6; --violet-soft: #373250;
+    --green: #7CBB74; --green-soft: #2C4029;
+    --shadow: 0 2px 10px rgba(0,0,0,.3);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+  html { font-size: 17px; }
+  body {
+    font-family: 'Lexend', 'Trebuchet MS', sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.65;                /* generous — dyslexia-friendly */
+    letter-spacing: 0.01em;
+    min-height: 100vh;
+    transition: background .3s;
+  }
+  button { font-family: inherit; border: none; cursor: pointer; background: none; color: inherit; }
+
+  .screen { display:none; max-width: 640px; margin: 0 auto; padding: 20px 18px 48px; }
+  .screen.active { display:block; animation: fadein .25s ease; }
+  @keyframes fadein { from { opacity:0; transform: translateY(6px);} to { opacity:1; transform:none; } }
+  @media (prefers-reduced-motion: reduce) { .screen.active { animation:none; } * { transition:none !important; } }
+
+  /* ============ Home ============ */
+  .hello {
+    font-family:'Fredoka', 'Lexend', sans-serif;
+    font-size: 1.9rem; font-weight: 600; line-height:1.25;
+    margin: 14px 0 2px;
+  }
+  .hello .wave { display:inline-block; }
+  .sub { color: var(--ink-soft); margin-bottom: 20px; font-size: .98rem; }
+
+  .starbar {
+    display:flex; align-items:center; gap:10px;
+    background: var(--card); border:1.5px solid var(--line);
+    border-radius: 999px; padding: 8px 18px; margin-bottom: 24px;
+    box-shadow: var(--shadow); width: fit-content;
+  }
+  .starbar .big { font-family:'Fredoka'; font-weight:700; font-size:1.25rem; }
+
+  .topics { display:flex; flex-direction:column; gap:14px; }
+  .topic {
+    display:flex; align-items:center; gap:16px; text-align:left;
+    background: var(--card); border: 1.5px solid var(--line);
+    border-radius: var(--radius); padding: 18px;
+    box-shadow: var(--shadow);
+    transition: transform .12s ease;
+  }
+  .topic:active { transform: scale(.98); }
+  .topic .emoji {
+    width: 58px; height: 58px; border-radius: 18px;
+    display:flex; align-items:center; justify-content:center;
+    font-size: 1.7rem; flex-shrink: 0;
+  }
+  .topic h3 { font-family:'Fredoka'; font-weight:600; font-size:1.15rem; margin-bottom:2px; }
+  .topic p { font-size:.88rem; color: var(--ink-soft); line-height:1.4; }
+  .topic .ring { margin-left:auto; flex-shrink:0; position:relative; width:46px; height:46px; }
+  .ring svg { transform: rotate(-90deg); }
+  .ring .pct {
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:.72rem; font-weight:600;
+  }
+
+  .comfort { margin-top: 34px; }
+  .comfort h4 { font-size:.85rem; font-weight:600; color:var(--ink-soft); margin-bottom:10px; letter-spacing:.04em; text-transform:uppercase; }
+  .swatches { display:flex; gap:12px; }
+  .swatch {
+    width:52px; height:52px; border-radius:50%;
+    border: 3px solid var(--line); font-size:1.15rem;
+    display:flex; align-items:center; justify-content:center;
+    transition: transform .12s;
+  }
+  .swatch.sel { border-color: var(--teal); transform: scale(1.1); }
+  .sw-paper { background:#F7F3EB; } .sw-sky { background:#EAF2F8; }
+  .sw-mint { background:#EAF4EC; } .sw-night { background:#23262E; }
+
+  /* ============ Practice ============ */
+  .topbar { display:flex; align-items:center; gap:12px; margin-bottom: 10px; }
+  .btn-back {
+    font-size: 1rem; font-weight:600; color: var(--ink-soft);
+    padding: 10px 14px; border-radius: 14px; background: var(--card);
+    border: 1.5px solid var(--line);
+  }
+  .progress-track {
+    flex:1; height: 14px; border-radius: 999px; background: var(--line); overflow:hidden;
+  }
+  .progress-fill {
+    height:100%; width:0%; border-radius:999px;
+    background: linear-gradient(90deg, var(--teal), var(--amber));
+    transition: width .4s ease;
+  }
+  .streak { font-family:'Fredoka'; font-weight:600; font-size:1rem; min-width:52px; text-align:right; }
+
+  .qcard {
+    background: var(--card); border:1.5px solid var(--line);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 26px 22px; margin-top: 14px; text-align:center;
+  }
+  .topic-label {
+    display:inline-block; font-size:.78rem; font-weight:600; letter-spacing:.05em;
+    text-transform:uppercase; padding: 4px 14px; border-radius:999px; margin-bottom: 16px;
+  }
+  .qtext {
+    font-family:'Fredoka','Lexend',sans-serif;
+    font-size: 1.7rem; font-weight:600; line-height: 1.45;
+    text-wrap: balance; margin-bottom: 6px;
+  }
+  .qstory {
+    font-family:'Lexend'; font-size: 1.12rem; font-weight:400; line-height: 1.8;
+    text-align:left; text-wrap: pretty; margin-bottom: 8px;
+  }
+  .qstory .hl { background: var(--amber-soft); border-radius:6px; padding:0 5px; font-weight:600; }
+
+  .btn-speak {
+    display:inline-flex; align-items:center; gap:8px;
+    font-size:.95rem; font-weight:600; color: var(--teal-deep);
+    background: var(--teal-soft); padding: 10px 20px; border-radius: 999px;
+    margin: 10px 0 4px;
+  }
+  .btn-speak:active { transform: scale(.96); }
+
+  .answers { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
+  .ans {
+    font-family:'Fredoka','Lexend',sans-serif;
+    font-size: 1.45rem; font-weight: 600;
+    background: var(--card); border: 2px solid var(--line);
+    border-radius: 18px; padding: 20px 8px;
+    box-shadow: var(--shadow);
+    transition: transform .1s, border-color .15s, background .15s;
+    min-height: 74px;
+  }
+  .ans:active { transform: scale(.97); }
+  .ans.correct { border-color: var(--green); background: var(--green-soft); }
+  .ans.oops { border-color: var(--amber); background: var(--amber-soft); }
+  .ans:disabled { opacity:.55; }
+  .ans.correct:disabled, .ans.oops:disabled { opacity:1; }
+
+  .feedback { min-height: 58px; margin-top: 16px; font-size: 1.05rem; font-weight: 500; }
+  .feedback .yay { color: var(--green); font-family:'Fredoka'; font-size:1.25rem; font-weight:600; }
+  .feedback .again { color: var(--ink-soft); }
+
+  .btn-row { display:flex; gap:12px; margin-top: 14px; justify-content:center; flex-wrap:wrap; }
+  .btn-main {
+    font-family:'Fredoka'; font-size:1.1rem; font-weight:600; color:#fff;
+    background: var(--teal); padding: 14px 34px; border-radius: 999px;
+    box-shadow: var(--shadow);
+  }
+  .btn-main:active { transform: scale(.97); }
+  .btn-ghost {
+    font-size:1rem; font-weight:600; color: var(--violet);
+    background: var(--violet-soft); padding: 14px 24px; border-radius: 999px;
+  }
+
+  /* ============ Method (show me how) ============ */
+  .method {
+    text-align:left; background: var(--violet-soft);
+    border-radius: 18px; padding: 18px 20px; margin-top: 16px;
+    display:none;
+  }
+  .method.open { display:block; animation: fadein .2s ease; }
+  .method h4 { font-family:'Fredoka'; font-weight:600; margin-bottom:10px; font-size:1.05rem; }
+  .method ol { list-style:none; display:flex; flex-direction:column; gap:10px; }
+  .method li {
+    display:flex; gap:12px; align-items:flex-start;
+    font-size: 1.02rem; line-height:1.6;
+  }
+  .step-dot {
+    flex-shrink:0; width:28px; height:28px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Fredoka'; font-weight:600; font-size:.9rem; color:#fff;
+    margin-top: 3px;
+  }
+  .s1 { background: var(--teal); } .s2 { background: var(--amber); }
+  .s3 { background: var(--rose); } .s4 { background: var(--violet); }
+  .method b { background: rgba(255,255,255,.65); border-radius:5px; padding:0 5px; }
+  [data-comfort="night"] .method b { background: rgba(0,0,0,.3); }
+
+  /* ============ Celebration ============ */
+  .cele { text-align:center; padding-top: 8vh; }
+  .cele .bigstar { font-size: 4.5rem; }
+  .cele h2 { font-family:'Fredoka'; font-size: 2rem; font-weight:700; margin: 10px 0 6px; }
+  .cele p { color: var(--ink-soft); font-size: 1.05rem; max-width: 40ch; margin: 0 auto 26px; }
+  .confetti { position: fixed; inset: 0; pointer-events: none; z-index: 50; }
+</style>
+</head>
+<body>
+
+<!-- ================= HOME ================= -->
+<section class="screen active" id="scr-home">
+  <h1 class="hello">Hi Elan <span class="wave">👋</span></h1>
+  <p class="sub" id="home-sub">Pick a topic. Little and often wins.</p>
+
+  <div class="starbar">⭐ <span class="big" id="star-count">0</span> <span style="color:var(--ink-soft); font-size:.9rem;">stars earned</span></div>
+
+  <div class="topics" id="topic-list"></div>
+
+  <div class="comfort">
+    <h4>Page colour — pick what feels easiest to read</h4>
+    <div class="swatches">
+      <button class="swatch sw-paper sel" data-c="paper" aria-label="Paper theme"></button>
+      <button class="swatch sw-sky" data-c="sky" aria-label="Sky theme"></button>
+      <button class="swatch sw-mint" data-c="mint" aria-label="Mint theme"></button>
+      <button class="swatch sw-night" data-c="night" aria-label="Night theme">🌙</button>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PRACTICE ================= -->
+<section class="screen" id="scr-practice">
+  <div class="topbar">
+    <button class="btn-back" id="btn-home">← Home</button>
+    <div class="progress-track"><div class="progress-fill" id="pfill"></div></div>
+    <div class="streak" id="streak">🔥 0</div>
+  </div>
+
+  <div class="qcard">
+    <span class="topic-label" id="q-topic-label"></span>
+    <div id="q-body"></div>
+    <button class="btn-speak" id="btn-speak">🔊 Read it to me</button>
+    <div class="answers" id="answers"></div>
+    <div class="feedback" id="feedback"></div>
+    <div class="btn-row">
+      <button class="btn-ghost" id="btn-how">💜 Show me how</button>
+      <button class="btn-main" id="btn-next" style="display:none;">Next →</button>
+    </div>
+    <div class="method" id="method"></div>
+  </div>
+</section>
+
+<!-- ================= CELEBRATION ================= -->
+<section class="screen" id="scr-cele">
+  <div class="cele">
+    <div class="bigstar" id="cele-emoji">🌟</div>
+    <h2 id="cele-title">You did it!</h2>
+    <p id="cele-msg"></p>
+    <button class="btn-main" id="btn-cele-home">Back home</button>
+    <div style="margin-top:14px;"><button class="btn-ghost" id="btn-cele-again">Same topic again</button></div>
+  </div>
+</section>
+
+<canvas class="confetti" id="confetti" width="0" height="0"></canvas>
+
+<script>
+'use strict';
+/* =========================================================
+   Elan's Maths — dyslexia-friendly GCSE Foundation practice
+   Edexcel Foundation basics. No timers. No failure states.
+   ========================================================= */
+
+// ---------- tiny helpers ----------
+const $ = id => document.getElementById(id);
+const rand = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
+const pick = arr => arr[rand(0, arr.length-1)];
+const shuffle = arr => arr.map(v=>[Math.random(),v]).sort((a,b)=>a[0]-b[0]).map(v=>v[1]);
+const gcd = (a,b) => b ? gcd(b, a%b) : a;
+
+// ---------- persistence ----------
+const store = {
+  data: (function(){
+    const fresh = {stars:0, topics:{}, comfort:'paper'};
+    try { return Object.assign(fresh, JSON.parse(localStorage.getItem('elan-maths') || '{}')); }
+    catch(e) { return fresh; }   // private browsing / blocked storage — app still works, just doesn't remember
+  })(),
+  save() { try { localStorage.setItem('elan-maths', JSON.stringify(this.data)); } catch(e){} }
+};
+
+// ---------- audio: warm musical feedback (her strength!) ----------
+let actx = null;
+function tone(freq, t0, dur, type='sine', gain=.12) {
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(0, actx.currentTime + t0);
+  g.gain.linearRampToValueAtTime(gain, actx.currentTime + t0 + .02);
+  g.gain.exponentialRampToValueAtTime(.0001, actx.currentTime + t0 + dur);
+  o.connect(g); g.connect(actx.destination);
+  o.start(actx.currentTime + t0); o.stop(actx.currentTime + t0 + dur + .05);
+}
+function ensureAudio(){ if (!actx) { try { actx = new (window.AudioContext||window.webkitAudioContext)(); } catch(e){} } }
+function chimeYay()  { ensureAudio(); if(!actx) return; tone(523.25,0,.18); tone(659.25,.11,.18); tone(783.99,.22,.3); } // C-E-G rising
+function chimeHmm()  { ensureAudio(); if(!actx) return; tone(392,0,.22,'sine',.08); tone(440,.14,.3,'sine',.08); }       // gentle, curious — not a buzzer
+function chimeStar() { ensureAudio(); if(!actx) return; [523.25,659.25,783.99,1046.5].forEach((f,i)=>tone(f,i*.09,.25)); }
+
+// ---------- speech: read questions aloud ----------
+function speak(text) {
+  if (!('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'en-GB'; u.rate = 0.92;
+  const v = speechSynthesis.getVoices().find(v => v.lang === 'en-GB');
+  if (v) u.voice = v;
+  speechSynthesis.speak(u);
+}
+if ('speechSynthesis' in window) speechSynthesis.getVoices(); // warm up
+
+// =========================================================
+//  QUESTION GENERATORS — each returns:
+//  { say, html, answer, options[4], method:[{s,txt}] }
+// =========================================================
+
+const NAMES = ['Elan','Maya','Josh','Amara','Leo','Sofia','Dylan'];
+const fmtGBP = p => '£' + (p/100).toFixed(2).replace(/\.00$/,'');
+
+const topics = {
+  tables: {
+    name:'Times Tables', emoji:'✖️', bg:'var(--teal-soft)', col:'var(--teal-deep)',
+    blurb:'The beat that everything else dances to.',
+    gen() {
+      const a = rand(3,12), b = rand(3,12), ans = a*b;
+      const opts = new Set([ans]);
+      while (opts.size<4) opts.add(pick([ans+a, ans-a, ans+b, ans-b, ans+rand(1,3), a*(b+1), (a+1)*b].filter(v=>v>0)));
+      return {
+        say:`What is ${a} times ${b}?`,
+        html:`<p class="qtext">${a} × ${b} = ?</p>`,
+        answer: ans, options: shuffle([...opts]),
+        method:[
+          {s:1, txt:`Think of it as a <b>rhythm</b>: count in ${a}s, ${b} beats.`},
+          {s:2, txt:`${a}, ${a*2}, ${a*3}… keep the beat going ${b} times.`},
+          {s:3, txt: (function(){
+                 const d = Math.abs(b-10);
+                 if (b>=9) return d===0 ? `Shortcut: anything × 10 — just pop a zero on. <b>${ans}</b>.`
+                   : `Shortcut: ${a} × 10 = <b>${a*10}</b>, then ${b>10?'add':'take off'} ${d===1?'one':'two'} more ${a}${d>1?'s':''} → <b>${ans}</b>.`;
+                 if (b%2===0) return `Shortcut: ${a} × ${b/2} = <b>${a*b/2}</b>, then <b>double it</b> → ${ans}.`;
+                 return `Shortcut: ${a} × ${b-1} = <b>${a*(b-1)}</b> (easier!), then add one more ${a}.`;
+               })()},
+          {s:4, txt:`You land on <b>${ans}</b>. 🎵`}
+        ]
+      };
+    }
+  },
+
+  fractions: {
+    name:'Fractions', emoji:'🍫', bg:'var(--rose-soft)', col:'var(--rose)',
+    blurb:'Fractions of amounts — think chocolate bars.',
+    gen() {
+      const dens=[2,3,4,5,10]; const den=pick(dens); const num=rand(1,den-1);
+      const whole=den*rand(2,9); const ans=whole/den*num;
+      const opts=new Set([ans]);
+      shuffle([whole/den, ans+whole/den, ans-whole/den, whole-ans, ans+den, ans+1].filter(v=>v>0))
+        .forEach(v=>{ if(opts.size<4) opts.add(v); });
+      let k=1; while(opts.size<4){ opts.add(ans+k*den); k++; }   // guaranteed distinct fillers
+      return {
+        say:`What is ${num} over ${den}, of ${whole}?`,
+        html:`<p class="qtext"><sup>${num}</sup>⁄<sub>${den}</sub> of ${whole} = ?</p>`,
+        answer: ans, options: shuffle([...opts].slice(0,4)),
+        method:[
+          {s:1, txt:`The <b>bottom</b> number (${den}) tells you how many pieces to cut into.`},
+          {s:2, txt:`<b>Divide</b>: ${whole} ÷ ${den} = <b>${whole/den}</b>. That's ONE piece.`},
+          {s:3, txt:`The <b>top</b> number (${num}) tells you how many pieces you take.`},
+          {s:4, txt:`<b>Multiply</b>: ${whole/den} × ${num} = <b>${ans}</b>. Divide by the bottom, times by the top. 🍫`}
+        ]
+      };
+    }
+  },
+
+  percent: {
+    name:'Percentages', emoji:'🏷️', bg:'var(--amber-soft)', col:'#B07818',
+    blurb:'The 10% trick unlocks almost everything.',
+    gen() {
+      const pcts=[10,20,25,5,50,30]; const pct=pick(pcts);
+      const base=rand(2,20)*10; const ans=base*pct/100;
+      const opts=new Set([ans]);
+      while(opts.size<4) opts.add(pick([base/10, ans*2, ans/2, ans+10, ans-5, base-ans].filter(v=>v>0)));
+      const m=[{s:1, txt:`Find <b>10%</b> first: just divide by 10. → ${base} ÷ 10 = <b>${base/10}</b>.`}];
+      if (pct===10) m.push({s:2, txt:`That's it! 10% of ${base} = <b>${ans}</b>.`});
+      else if (pct===5) m.push({s:2, txt:`5% is <b>half</b> of 10%. → ${base/10} ÷ 2 = <b>${ans}</b>.`});
+      else if (pct===25) m.push({s:2, txt:`25% is a <b>quarter</b>: halve it, halve it again. ${base}→${base/2}→<b>${ans}</b>.`});
+      else if (pct===50) m.push({s:2, txt:`50% is just <b>half</b>. ${base} ÷ 2 = <b>${ans}</b>.`});
+      else m.push({s:2, txt:`${pct}% = ${pct/10} lots of 10%. → ${base/10} × ${pct/10} = <b>${ans}</b>.`});
+      m.push({s:3, txt:`The 10% trick works on <b>any</b> number — prices, test scores, anything.`});
+      return {
+        say:`What is ${pct} percent of ${base}?`,
+        html:`<p class="qtext">${pct}% of ${base} = ?</p>`,
+        answer: ans, options: shuffle([...opts].slice(0,4)), method:m
+      };
+    }
+  },
+
+  negatives: {
+    name:'Negative Numbers', emoji:'🌡️', bg:'var(--violet-soft)', col:'var(--violet)',
+    blurb:'Temperatures going up and down — that’s all it is.',
+    gen() {
+      const start=rand(-9,5); const change=rand(2,9); const drop=Math.random()<.5;
+      const ans = drop ? start-change : start+change;
+      const opts=new Set([ans]);
+      while(opts.size<4) opts.add(pick([ans+1,ans-1,ans+2,-ans,start+change,start-change].filter(v=>v!==ans||!opts.has(v))));
+      const verb = drop?'falls':'rises';
+      return {
+        say:`The temperature is ${start} degrees. It ${verb} by ${change} degrees. What is it now?`,
+        html:`<p class="qtext">🌡️ ${start}°C, ${verb} ${change}°C → ?</p>`,
+        answer: ans, options: shuffle([...opts].slice(0,4)),
+        method:[
+          {s:1, txt:`Picture a <b>thermometer</b> (or a lift going up and down floors).`},
+          {s:2, txt:`Start at <b>${start}</b>. "${verb}" means move ${drop?'DOWN':'UP'} the scale.`},
+          {s:3, txt:`Count ${drop?'down':'up'} ${change} steps${(drop&&start>0&&ans<0)?' — crossing zero on the way':''}.`},
+          {s:4, txt:`You land on <b>${ans}°C</b>. Down = colder, up = warmer. That's all it is.`}
+        ]
+      };
+    }
+  },
+
+  money: {
+    name:'Money Stories', emoji:'📖', bg:'var(--green-soft)', col:'var(--green)',
+    blurb:'Word problems — your English brain is the superpower here.',
+    gen() {
+      const name=pick(NAMES.filter(n=>n!=='Elan'));
+      const item=pick([['cinema tickets',650,950],['bubble teas',380,550],['magazines',250,450],['smoothies',320,480]]);
+      const qty=rand(2,4); const price0=Math.round(rand(item[1],item[2])/10)*10;
+      const cost=qty*price0; const paid=Math.ceil(cost/1000)*1000; const ans=paid-cost;
+      const opts=new Set([ans]);
+      while(opts.size<4) opts.add(pick([ans+100,ans-100,ans+50,cost,ans+10].filter(v=>v>0)));
+      const q=`${name} buys ${qty} ${item[0]} at ${fmtGBP(price0)} each and pays with ${fmtGBP(paid)}. How much change?`;
+      return {
+        say:q,
+        html:`<p class="qstory">${name} buys <span class="hl">${qty}</span> ${item[0]} at <span class="hl">${fmtGBP(price0)} each</span>.<br>They pay with <span class="hl">${fmtGBP(paid)}</span>.<br><b>How much change do they get?</b></p>`,
+        answer: ans, options: shuffle([...opts].slice(0,4)).map(v=>v), fmt: v=>fmtGBP(v),
+        method:[
+          {s:1, txt:`<b>Read like a story editor</b> — the highlighted bits are the only numbers that matter.`},
+          {s:2, txt:`Total cost: ${qty} × ${fmtGBP(price0)} = <b>${fmtGBP(cost)}</b>.`},
+          {s:3, txt:`Change means <b>take away</b>: ${fmtGBP(paid)} − ${fmtGBP(cost)}.`},
+          {s:4, txt:`= <b>${fmtGBP(ans)}</b>. Story → numbers → answer. Every word problem works like this.`}
+        ]
+      };
+    }
+  }
+};
+
+// =========================================================
+//  APP STATE + FLOW
+// =========================================================
+const SESSION_LEN = 8;   // short & winnable — little and often
+let cur = { topic:null, q:null, i:0, correctFirstTry:0, streak:0, answeredWrong:false };
+
+function show(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); $(id).classList.add('active'); window.scrollTo(0,0); }
+
+// ---------- home ----------
+function renderHome() {
+  $('star-count').textContent = store.data.stars;
+  const hrs = new Date().getHours();
+  $('home-sub').textContent = hrs<12 ? 'Morning! Pick a topic — little and often wins.'
+                       : hrs<17 ? 'Pick a topic. Ten minutes is plenty.'
+                       : 'Evening session! Short and sweet does it.';
+  const list = $('topic-list'); list.innerHTML='';
+  Object.entries(topics).forEach(([key,t])=>{
+    const done = (store.data.topics[key]?.sessions)||0;
+    const best = (store.data.topics[key]?.best)||0;
+    const pctv = Math.min(100, Math.round(best/SESSION_LEN*100));
+    const c = 2*Math.PI*19;
+    const b = document.createElement('button');
+    b.className='topic';
+    b.innerHTML = `
+      <span class="emoji" style="background:${t.bg}">${t.emoji}</span>
+      <span><h3>${t.name}</h3><p>${t.blurb}${done?` · ${done} session${done>1?'s':''} done`:''}</p></span>
+      <span class="ring">
+        <svg width="46" height="46"><circle cx="23" cy="23" r="19" fill="none" stroke="var(--line)" stroke-width="5"/>
+        <circle cx="23" cy="23" r="19" fill="none" stroke="${t.col}" stroke-width="5" stroke-linecap="round"
+          stroke-dasharray="${c}" stroke-dashoffset="${c*(1-pctv/100)}"/></svg>
+        <span class="pct">${pctv?pctv+'%':'·'}</span>
+      </span>`;
+    b.onclick = ()=> startSession(key);
+    list.appendChild(b);
+  });
+}
+
+// ---------- practice ----------
+function startSession(key) {
+  cur = { topic:key, i:0, correctFirstTry:0, streak:0, q:null, answeredWrong:false };
+  show('scr-practice');
+  nextQuestion();
+}
+
+function nextQuestion() {
+  const t = topics[cur.topic];
+  cur.q = t.gen(); cur.answeredWrong = false;
+  $('q-topic-label').textContent = t.emoji+' '+t.name;
+  $('q-topic-label').style.background = t.bg;
+  $('q-topic-label').style.color = t.col;
+  $('q-body').innerHTML = cur.q.html;
+  $('feedback').innerHTML='';
+  $('btn-next').style.display='none';
+  $('btn-how').style.display='';
+  $('method').classList.remove('open');
+  $('pfill').style.width = (cur.i/SESSION_LEN*100)+'%';
+  $('streak').textContent = '🔥 '+cur.streak;
+
+  const fmt = cur.q.fmt || (v=>v);
+  const box = $('answers'); box.innerHTML='';
+  cur.q.options.forEach(v=>{
+    const b=document.createElement('button');
+    b.className='ans'; b.textContent = fmt(v);
+    b.onclick = ()=> checkAnswer(b, v);
+    box.appendChild(b);
+  });
+  renderMethod();
+}
+
+function renderMethod() {
+  $('method').innerHTML = '<h4>💜 How to do it</h4><ol>'+
+    cur.q.method.map(m=>`<li><span class="step-dot s${m.s}">${m.s}</span><span>${m.txt}</span></li>`).join('')+'</ol>';
+}
+
+function checkAnswer(btn, val) {
+  const right = val === cur.q.answer;
+  if (right) {
+    btn.classList.add('correct');
+    document.querySelectorAll('.ans').forEach(b=>b.disabled=true);
+    chimeYay();
+    if (!cur.answeredWrong) { cur.correctFirstTry++; cur.streak++; }
+    $('streak').textContent = '🔥 '+cur.streak;
+    $('feedback').innerHTML = `<span class="yay">${pick(['Yes! 🎉','Nailed it!','Beautiful!','That’s the one!','Boom! 💪','Lovely work!'])}</span>`;
+    cur.i++;
+    $('pfill').style.width = (cur.i/SESSION_LEN*100)+'%';
+    $('btn-next').style.display='';
+    $('btn-next').textContent = cur.i>=SESSION_LEN ? 'Finish ⭐' : 'Next →';
+  } else {
+    btn.classList.add('oops'); btn.disabled = true;
+    chimeHmm();
+    cur.answeredWrong = true; cur.streak = 0;
+    $('streak').textContent = '🔥 0';
+    $('feedback').innerHTML = `<span class="again">${pick(['Not that one — no stress, look again 💛','Close! Try another 💛','Have another look — you’ve got this 💛'])}</span>`;
+    $('method').classList.add('open');   // gently open the method — learning moment, not punishment
+  }
+}
+
+$('btn-next').onclick = ()=>{
+  if (cur.i >= SESSION_LEN) finishSession(); else nextQuestion();
+};
+$('btn-how').onclick = ()=> { $('method').classList.toggle('open'); };
+$('btn-speak').onclick = ()=> speak(cur.q.say);
+$('btn-home').onclick = ()=> { speechSynthesis?.cancel(); renderHome(); show('scr-home'); };
+
+// ---------- finish + celebrate ----------
+function finishSession() {
+  const t = topics[cur.topic];
+  const earned = 1 + (cur.correctFirstTry >= SESSION_LEN ? 2 : cur.correctFirstTry >= SESSION_LEN-2 ? 1 : 0);
+  store.data.stars += earned;
+  const rec = store.data.topics[cur.topic] || {sessions:0, best:0};
+  rec.sessions++; rec.best = Math.max(rec.best, cur.correctFirstTry);
+  store.data.topics[cur.topic] = rec; store.save();
+
+  $('cele-emoji').textContent = cur.correctFirstTry >= SESSION_LEN ? '🏆' : cur.correctFirstTry >= SESSION_LEN-2 ? '🌟' : '💪';
+  $('cele-title').textContent = cur.correctFirstTry >= SESSION_LEN ? 'Perfect session!' : cur.correctFirstTry >= SESSION_LEN-2 ? 'Brilliant work!' : 'Session done — that counts!';
+  $('cele-msg').textContent = `${cur.correctFirstTry} out of ${SESSION_LEN} first try on ${t.name}. +${earned} star${earned>1?'s':''} ⭐ Every session is your brain getting stronger.`;
+  chimeStar(); confettiBurst();
+  show('scr-cele');
+}
+$('btn-cele-home').onclick = ()=>{ renderHome(); show('scr-home'); };
+$('btn-cele-again').onclick = ()=> startSession(cur.topic);
+
+// ---------- confetti ----------
+function confettiBurst() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const cv=$('confetti'), ctx=cv.getContext('2d');
+  cv.width=innerWidth; cv.height=innerHeight;
+  const cols=['#0E8F8B','#F2A93B','#D96C7B','#7A6BB5','#5A9E52'];
+  const ps=Array.from({length:80},()=>({x:Math.random()*cv.width,y:-20-Math.random()*cv.height*.5,v:2+Math.random()*3,r:4+Math.random()*5,c:pick(cols),a:Math.random()*6.28,s:(Math.random()-.5)*.2}));
+  let n=0;
+  (function tick(){
+    ctx.clearRect(0,0,cv.width,cv.height);
+    ps.forEach(p=>{ p.y+=p.v; p.a+=p.s; ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.a); ctx.fillStyle=p.c; ctx.fillRect(-p.r/2,-p.r/2,p.r,p.r*.6); ctx.restore(); });
+    if (++n<160) requestAnimationFrame(tick); else ctx.clearRect(0,0,cv.width,cv.height);
+  })();
+}
+
+// ---------- comfort themes ----------
+document.querySelectorAll('.swatch').forEach(sw=>{
+  sw.onclick = ()=>{
+    document.querySelectorAll('.swatch').forEach(s=>s.classList.remove('sel'));
+    sw.classList.add('sel');
+    const c = sw.dataset.c;
+    if (c==='paper') document.documentElement.removeAttribute('data-comfort');
+    else document.documentElement.setAttribute('data-comfort', c);
+    store.data.comfort = c; store.save();
+  };
+});
+(function initComfort(){
+  const c = store.data.comfort;
+  if (c && c!=='paper') {
+    document.documentElement.setAttribute('data-comfort', c);
+    document.querySelectorAll('.swatch').forEach(s=>s.classList.toggle('sel', s.dataset.c===c));
+  }
+})();
+
+renderHome();
+</script>
+</body>
+</html>
