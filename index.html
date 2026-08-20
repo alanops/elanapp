@@ -83,6 +83,14 @@
     box-shadow: var(--shadow); width: fit-content;
   }
   .starbar .big { font-family:'Fredoka'; font-weight:700; font-size:1.25rem; }
+  .toprow { display:flex; align-items:center; gap:12px; margin-bottom:24px; }
+  .toprow .starbar { margin-bottom:0; }
+  .btn-sound {
+    width:50px; height:50px; border-radius:50%; font-size:1.15rem;
+    background:var(--card); border:1.5px solid var(--line); box-shadow:var(--shadow);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .qshape { margin: 6px auto 2px; display:block; }
 
   .topics { display:flex; flex-direction:column; gap:14px; }
   .topic {
@@ -175,6 +183,7 @@
     transition: transform .1s, border-color .15s, background .15s;
     min-height: 74px;
   }
+  .ans.small { font-family:'Lexend'; font-size: .98rem; font-weight:500; line-height:1.45; padding: 14px 12px; }
   .ans:active { transform: scale(.97); }
   .ans.correct { border-color: var(--green); background: var(--green-soft); }
   .ans.oops { border-color: var(--amber); background: var(--amber-soft); }
@@ -236,7 +245,10 @@
   <h1 class="hello">Hi Elan <span class="wave">👋</span></h1>
   <p class="sub" id="home-sub">Pick a topic. Little and often wins.</p>
 
-  <div class="starbar">⭐ <span class="big" id="star-count">0</span> <span style="color:var(--ink-soft); font-size:.9rem;">stars earned</span></div>
+  <div class="toprow">
+    <div class="starbar">⭐ <span class="big" id="star-count">0</span> <span style="color:var(--ink-soft); font-size:.9rem;">stars earned</span></div>
+    <button class="btn-sound" id="btn-sound" aria-label="Turn sounds on or off">🔊</button>
+  </div>
 
   <div class="topics" id="topic-list"></div>
 
@@ -322,9 +334,10 @@ function tone(freq, t0, dur, type='sine', gain=.12) {
   o.start(actx.currentTime + t0); o.stop(actx.currentTime + t0 + dur + .05);
 }
 function ensureAudio(){ if (!actx) { try { actx = new (window.AudioContext||window.webkitAudioContext)(); } catch(e){} } }
-function chimeYay()  { ensureAudio(); if(!actx) return; tone(523.25,0,.18); tone(659.25,.11,.18); tone(783.99,.22,.3); } // C-E-G rising
-function chimeHmm()  { ensureAudio(); if(!actx) return; tone(392,0,.22,'sine',.08); tone(440,.14,.3,'sine',.08); }       // gentle, curious — not a buzzer
-function chimeStar() { ensureAudio(); if(!actx) return; [523.25,659.25,783.99,1046.5].forEach((f,i)=>tone(f,i*.09,.25)); }
+const soundOn = () => store.data.sound !== false;
+function chimeYay()  { if(!soundOn()) return; ensureAudio(); if(!actx) return; tone(523.25,0,.18); tone(659.25,.11,.18); tone(783.99,.22,.3); } // C-E-G rising
+function chimeHmm()  { if(!soundOn()) return; ensureAudio(); if(!actx) return; tone(392,0,.22,'sine',.08); tone(440,.14,.3,'sine',.08); }       // gentle, curious — not a buzzer
+function chimeStar() { if(!soundOn()) return; ensureAudio(); if(!actx) return; [523.25,659.25,783.99,1046.5].forEach((f,i)=>tone(f,i*.09,.25)); }
 
 // ---------- speech: read questions aloud ----------
 function speak(text) {
@@ -467,6 +480,154 @@ const topics = {
         ]
       };
     }
+  },
+
+  ratio: {
+    name:'Ratio', emoji:'🍰', bg:'var(--rose-soft)', col:'var(--rose)',
+    blurb:'Sharing fairly — cut into parts first.',
+    gen() {
+      const [a,b] = pick([[1,2],[1,3],[2,3],[3,2],[1,4],[3,1],[2,5]]);
+      const onePart = rand(2,9); const total = (a+b)*onePart;
+      const n1 = pick(NAMES), n2 = pick(NAMES.filter(n=>n!==n1));
+      const ans = a*onePart;
+      const opts = new Set([ans]);
+      shuffle([b*onePart, onePart, total-ans+1, ans+onePart, Math.round(total/2)].filter(v=>v>0))
+        .forEach(v=>{ if(opts.size<4) opts.add(v); });
+      let k=1; while(opts.size<4){ opts.add(ans+k*(a+b)); k++; }
+      return {
+        say:`Share ${total} pounds between ${n1} and ${n2} in the ratio ${a} to ${b}. How much does ${n1} get?`,
+        html:`<p class="qstory">Share <span class="hl">£${total}</span> between ${n1} and ${n2} in the ratio <span class="hl">${a} : ${b}</span>.<br><b>How much does ${n1} get?</b></p>`,
+        answer: ans, options: shuffle([...opts]), fmt: v=>'£'+v,
+        method:[
+          {s:1, txt:`<b>Count the parts</b>: ${a} + ${b} = <b>${a+b}</b> parts of the cake.`},
+          {s:2, txt:`<b>One part</b> = £${total} ÷ ${a+b} = <b>£${onePart}</b>.`},
+          {s:3, txt:`${n1} gets ${a} part${a>1?'s':''}: ${a} × £${onePart} = <b>£${ans}</b>.`},
+          {s:4, txt:`<b>Check</b>: £${ans} + £${b*onePart} = £${total}. It all adds back — so it's right. ✅`}
+        ]
+      };
+    }
+  },
+
+  algebra: {
+    name:'Algebra', emoji:'⚖️', bg:'var(--violet-soft)', col:'var(--violet)',
+    blurb:'Finding x — keep the scales balanced.',
+    gen() {
+      const type = rand(0,2); const x = rand(2,9);
+      let eq, say, method, ans = x;
+      if (type===0) {                       // x + a = b
+        const a = rand(2,9), b = x+a;
+        eq = `x + ${a} = ${b}`; say = `x plus ${a} equals ${b}. What is x?`;
+        method = [
+          {s:1, txt:`Picture <b>balance scales</b> ⚖️ — both sides weigh the same.`},
+          {s:2, txt:`x has "<b>+ ${a}</b>" stuck to it. Undo it: take ${a} off <b>both sides</b>.`},
+          {s:3, txt:`Left side: just <b>x</b>. Right side: ${b} − ${a} = <b>${ans}</b>.`},
+          {s:4, txt:`<b>Check it</b>: ${ans} + ${a} = ${b} ✅. Checking is free marks.`}
+        ];
+      } else if (type===1) {                // ax = b
+        const a = rand(2,9), b = a*x;
+        eq = `${a}x = ${b}`; say = `${a} x equals ${b}. What is x?`;
+        method = [
+          {s:1, txt:`${a}x means <b>${a} × x</b> — ${a} lots of x weigh ${b}.`},
+          {s:2, txt:`Undo "× ${a}" with the opposite: <b>÷ ${a}</b> on both sides.`},
+          {s:3, txt:`x = ${b} ÷ ${a} = <b>${ans}</b>.`},
+          {s:4, txt:`<b>Check it</b>: ${a} × ${ans} = ${b} ✅`}
+        ];
+      } else {                              // ax + c = b
+        const a = rand(2,5), c = rand(1,9), b = a*x+c;
+        eq = `${a}x + ${c} = ${b}`; say = `${a} x plus ${c} equals ${b}. What is x?`;
+        method = [
+          {s:1, txt:`Two things stuck to x. <b>Undo in reverse order</b> — the + first.`},
+          {s:2, txt:`Take ${c} off both sides: ${a}x = ${b} − ${c} = <b>${b-c}</b>.`},
+          {s:3, txt:`Now undo "× ${a}": x = ${b-c} ÷ ${a} = <b>${ans}</b>.`},
+          {s:4, txt:`<b>Check it</b>: ${a} × ${ans} + ${c} = ${b} ✅`}
+        ];
+      }
+      const opts = new Set([ans]);
+      shuffle([ans+1, ans-1, ans+2, ans*2, ans+3].filter(v=>v>0))
+        .forEach(v=>{ if(opts.size<4) opts.add(v); });
+      let k=4; while(opts.size<4){ opts.add(ans+k); k++; }
+      return { say, html:`<p class="qtext">${eq}</p><p style="color:var(--ink-soft); font-size:1rem;">x = ?</p>`,
+               answer: ans, options: shuffle([...opts]), method };
+    }
+  },
+
+  shapes: {
+    name:'Shapes', emoji:'📐', bg:'var(--teal-soft)', col:'var(--teal-deep)',
+    blurb:'Area and perimeter — fill the grass, count the fence.',
+    gen() {
+      const w = rand(3,12), h = rand(2,9);
+      const isArea = Math.random() < .55;
+      const ans = isArea ? w*h : 2*(w+h);
+      const wrong = isArea ? 2*(w+h) : w*h;   // the classic mix-up — best distractor there is
+      const opts = new Set([ans]);
+      shuffle([wrong, w+h, ans+w, ans-h].filter(v=>v>0))
+        .forEach(v=>{ if(opts.size<4) opts.add(v); });
+      let k=1; while(opts.size<4){ opts.add(ans+k*3); k++; }
+      const svg = `<svg class="qshape" viewBox="0 0 240 150" width="210" role="img" aria-label="Rectangle ${w} by ${h} centimetres">
+        <rect x="45" y="35" width="160" height="85" fill="var(--teal-soft)" stroke="var(--teal)" stroke-width="3" rx="8"/>
+        <text x="125" y="24" text-anchor="middle" font-size="17" font-weight="600" fill="var(--ink)" font-family="Lexend, sans-serif">${w} cm</text>
+        <text x="24" y="83" text-anchor="middle" font-size="17" font-weight="600" fill="var(--ink)" font-family="Lexend, sans-serif">${h} cm</text>
+      </svg>`;
+      return {
+        say: isArea ? `A rectangle is ${w} centimetres long and ${h} centimetres tall. What is its area?`
+                    : `A rectangle is ${w} centimetres long and ${h} centimetres tall. What is its perimeter?`,
+        html: svg + `<p class="qtext">${isArea?'Area':'Perimeter'} = ?</p>`,
+        answer: ans, options: shuffle([...opts]), fmt: v=>v+(isArea?' cm²':' cm'),
+        method: isArea ? [
+          {s:1, txt:`<b>Area = the grass inside</b> the fence. 🌱`},
+          {s:2, txt:`Fill it with 1 cm squares: ${w} across, ${h} rows.`},
+          {s:3, txt:`${w} × ${h} = <b>${ans} cm²</b>. The ² is because it's squares.`},
+          {s:4, txt:`Perimeter would be the <b>fence</b> — the exam loves swapping them. Read twice!`}
+        ] : [
+          {s:1, txt:`<b>Perimeter = the fence around</b> the outside. 🚧`},
+          {s:2, txt:`Walk it: ${w} + ${h} + ${w} + ${h}.`},
+          {s:3, txt:`Shortcut: 2 × (${w} + ${h}) = 2 × ${w+h} = <b>${ans} cm</b>.`},
+          {s:4, txt:`Area would be the <b>grass inside</b> — the exam loves swapping them. Read twice!`}
+        ]
+      };
+    }
+  },
+
+  decoder: {
+    name:'Exam Words', emoji:'🔎', bg:'var(--amber-soft)', col:'#B07818',
+    blurb:'Crack the code words — free marks for word-lovers.',
+    bank: [
+      {w:'Solve',     m:'Find the value of the letter',                 eg:'Solve x + 3 = 10 → x = 7'},
+      {w:'Simplify',  m:'Collect it up — make it as short as possible', eg:'Simplify 3a + 2a → 5a'},
+      {w:'Estimate',  m:'Round the numbers first, then work it out roughly', eg:'Estimate 19.6 × 5.1 → 20 × 5 = 100'},
+      {w:'Expand',    m:'Multiply out the brackets',                    eg:'Expand 3(x + 2) → 3x + 6'},
+      {w:'Factorise', m:'Put the brackets back in',                     eg:'Factorise 5x + 10 → 5(x + 2)'},
+      {w:'Evaluate',  m:'Work out the actual number',                   eg:'Evaluate 3² + 1 → 10'},
+      {w:'Round',     m:'Snap the number to the nearest step',          eg:'Round 47 to the nearest 10 → 50'},
+      {w:'Work out',  m:'Do the calculation and show your steps',       eg:'Marks come from the steps, not just the answer'},
+      {w:'Simplify fully', m:'Keep collecting until nothing more can be done', eg:'6x + 2x − 3x → 5x'},
+      {w:'Hence',     m:'Use the answer you just got for this next bit', eg:'"Hence" = the last answer is a clue'}
+    ],
+    gen() {
+      const card = pick(this.bank);
+      const others = shuffle(this.bank.filter(c=>c.w!==card.w)).slice(0,3).map(c=>c.m);
+      return {
+        say:`In an exam question, what does "${card.w}" tell you to do?`,
+        html:`<p class="qtext">“${card.w}”</p><p style="color:var(--ink-soft); font-size:1rem;">means… ?</p>`,
+        answer: card.m, options: shuffle([card.m, ...others]),
+        method:[
+          {s:1, txt:`<b>${card.w}</b> = ${card.m}.`},
+          {s:2, txt:`Example: <b>${card.eg}</b>`},
+          {s:3, txt:`Command words are <b>instructions, not tricks</b>. Underline them first, every time.`}
+        ]
+      };
+    }
+  },
+
+  mix: {
+    name:'Mix It Up', emoji:'🎲', bg:'var(--green-soft)', col:'var(--green)',
+    blurb:'A bit of everything — just like a real paper.',
+    gen() {
+      const key = pick(['tables','fractions','percent','negatives','money','ratio','algebra','shapes']);
+      const q = topics[key].gen();
+      q.from = key;
+      return q;
+    }
   }
 };
 
@@ -517,9 +678,10 @@ function startSession(key) {
 function nextQuestion() {
   const t = topics[cur.topic];
   cur.q = t.gen(); cur.answeredWrong = false;
-  $('q-topic-label').textContent = t.emoji+' '+t.name;
-  $('q-topic-label').style.background = t.bg;
-  $('q-topic-label').style.color = t.col;
+  const disp = cur.q.from ? topics[cur.q.from] : t;   // Mix mode shows the real sub-topic
+  $('q-topic-label').textContent = disp.emoji+' '+disp.name + (cur.q.from ? ' 🎲' : '');
+  $('q-topic-label').style.background = disp.bg;
+  $('q-topic-label').style.color = disp.col;
   $('q-body').innerHTML = cur.q.html;
   $('feedback').innerHTML='';
   $('btn-next').style.display='none';
@@ -530,9 +692,11 @@ function nextQuestion() {
 
   const fmt = cur.q.fmt || (v=>v);
   const box = $('answers'); box.innerHTML='';
+  const anyLong = cur.q.options.some(v => String(fmt(v)).length > 9);
   cur.q.options.forEach(v=>{
     const b=document.createElement('button');
-    b.className='ans'; b.textContent = fmt(v);
+    b.className = 'ans' + (anyLong ? ' small' : '');
+    b.textContent = fmt(v);
     b.onclick = ()=> checkAnswer(b, v);
     box.appendChild(b);
   });
@@ -572,7 +736,7 @@ $('btn-next').onclick = ()=>{
 };
 $('btn-how').onclick = ()=> { $('method').classList.toggle('open'); };
 $('btn-speak').onclick = ()=> speak(cur.q.say);
-$('btn-home').onclick = ()=> { speechSynthesis?.cancel(); renderHome(); show('scr-home'); };
+$('btn-home').onclick = ()=> { if (window.speechSynthesis) speechSynthesis.cancel(); renderHome(); show('scr-home'); };
 
 // ---------- finish + celebrate ----------
 function finishSession() {
@@ -585,7 +749,9 @@ function finishSession() {
 
   $('cele-emoji').textContent = cur.correctFirstTry >= SESSION_LEN ? '🏆' : cur.correctFirstTry >= SESSION_LEN-2 ? '🌟' : '💪';
   $('cele-title').textContent = cur.correctFirstTry >= SESSION_LEN ? 'Perfect session!' : cur.correctFirstTry >= SESSION_LEN-2 ? 'Brilliant work!' : 'Session done — that counts!';
-  $('cele-msg').textContent = `${cur.correctFirstTry} out of ${SESSION_LEN} first try on ${t.name}. +${earned} star${earned>1?'s':''} ⭐ Every session is your brain getting stronger.`;
+  const milestone = Math.floor(store.data.stars/25) > Math.floor((store.data.stars-earned)/25)
+    ? ` 🏅 That's your ${Math.floor(store.data.stars/25)*25}-star milestone!` : '';
+  $('cele-msg').textContent = `${cur.correctFirstTry} out of ${SESSION_LEN} first try on ${t.name}. +${earned} star${earned>1?'s':''} ⭐${milestone} Every session is your brain getting stronger.`;
   chimeStar(); confettiBurst();
   show('scr-cele');
 }
@@ -618,6 +784,14 @@ document.querySelectorAll('.swatch').forEach(sw=>{
     store.data.comfort = c; store.save();
   };
 });
+// ---------- sound toggle ----------
+$('btn-sound').textContent = soundOn() ? '🔊' : '🔇';
+$('btn-sound').onclick = ()=>{
+  store.data.sound = !soundOn(); store.save();
+  $('btn-sound').textContent = soundOn() ? '🔊' : '🔇';
+  if (soundOn()) chimeYay();   // a little taste of what you just turned on
+};
+
 (function initComfort(){
   const c = store.data.comfort;
   if (c && c!=='paper') {
