@@ -635,7 +635,33 @@ const topics = {
 //  APP STATE + FLOW
 // =========================================================
 const SESSION_LEN = 8;   // short & winnable — little and often
-let cur = { topic:null, q:null, i:0, correctFirstTry:0, streak:0, answeredWrong:false };
+let cur = { topic:null, q:null, i:0, correctFirstTry:0, streak:0, answeredWrong:false, len:SESSION_LEN, cleared:0 };
+
+// ---------- tricky ones: spaced-repetition review pile ----------
+const TRICKY_DUE_MS = 3*60*60*1000;   // rest 3h before a rematch — spacing makes it stick
+const TRICKY_MAX = 20;                // never a guilt mountain
+function trickyList(){ return store.data.tricky || (store.data.tricky = []); }
+function trickyDue(){ const now = Date.now(); return trickyList().filter(t => now - t.ts >= TRICKY_DUE_MS); }
+function saveTricky() {
+  const list = trickyList();
+  if (list.some(t => t.say === cur.q.say)) return;          // already in the pile
+  const fmt = cur.q.fmt;
+  list.push({
+    say: cur.q.say, html: cur.q.html, method: cur.q.method,
+    answer: fmt ? String(fmt(cur.q.answer)) : cur.q.answer,  // pre-format: functions can't be stored
+    options: fmt ? cur.q.options.map(v => String(fmt(v))) : cur.q.options,
+    topic: cur.q.from || cur.topic, ts: Date.now(), misses: 1
+  });
+  while (list.length > TRICKY_MAX) list.shift();
+  store.save();
+}
+function startTricky() {
+  const due = shuffle(trickyDue()).slice(0, SESSION_LEN);
+  if (!due.length) return;
+  cur = { topic:'tricky', i:0, correctFirstTry:0, streak:0, q:null, answeredWrong:false, len:due.length, cleared:0, queue:due };
+  show('scr-practice');
+  nextQuestion();
+}
 
 function show(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); $(id).classList.add('active'); window.scrollTo(0,0); }
 
@@ -647,6 +673,25 @@ function renderHome() {
                        : hrs<17 ? 'Pick a topic. Ten minutes is plenty.'
                        : 'Evening session! Short and sweet does it.';
   const list = $('topic-list'); list.innerHTML='';
+
+  // Tricky Ones card — only exists when there's something ready for a rematch
+  const due = trickyDue(), resting = trickyList().length - due.length;
+  if (due.length) {
+    const b = document.createElement('button');
+    b.className='topic'; b.style.borderColor='var(--amber)'; b.style.borderWidth='2px';
+    b.innerHTML = `
+      <span class="emoji" style="background:var(--amber-soft)">🔁</span>
+      <span><h3>Tricky Ones</h3><p>${due.length} waiting for a rematch — beat them and they're gone for good.</p></span>
+      <span class="ring"><span class="pct" style="font-family:'Fredoka'; font-size:1.15rem; color:var(--amber)">${due.length}</span></span>`;
+    b.onclick = startTricky;
+    list.appendChild(b);
+  } else if (resting > 0) {
+    const d = document.createElement('div');
+    d.style.cssText='font-size:.88rem; color:var(--ink-soft); padding:2px 6px;';
+    d.textContent = `🔁 ${resting} tricky one${resting>1?'s':''} resting — they'll be ready for a rematch soon.`;
+    list.appendChild(d);
+  }
+
   Object.entries(topics).forEach(([key,t])=>{
     const done = (store.data.topics[key]?.sessions)||0;
     const best = (store.data.topics[key]?.best)||0;
@@ -670,16 +715,18 @@ function renderHome() {
 
 // ---------- practice ----------
 function startSession(key) {
-  cur = { topic:key, i:0, correctFirstTry:0, streak:0, q:null, answeredWrong:false };
+  cur = { topic:key, i:0, correctFirstTry:0, streak:0, q:null, answeredWrong:false, len:SESSION_LEN, cleared:0 };
   show('scr-practice');
   nextQuestion();
 }
 
 function nextQuestion() {
   const t = topics[cur.topic];
-  cur.q = t.gen(); cur.answeredWrong = false;
-  const disp = cur.q.from ? topics[cur.q.from] : t;   // Mix mode shows the real sub-topic
-  $('q-topic-label').textContent = disp.emoji+' '+disp.name + (cur.q.from ? ' 🎲' : '');
+  if (cur.topic === 'tricky') { cur.q = Object.assign({}, cur.queue[cur.i]); cur.q.from = cur.q.topic; }
+  else cur.q = t.gen();
+  cur.answeredWrong = false;
+  const disp = cur.q.from ? topics[cur.q.from] : t;   // Mix/Tricky show the real sub-topic
+  $('q-topic-label').textContent = disp.emoji+' '+disp.name + (cur.topic==='tricky' ? ' 🔁' : cur.q.from ? ' 🎲' : '');
   $('q-topic-label').style.background = disp.bg;
   $('q-topic-label').style.color = disp.col;
   $('q-body').innerHTML = cur.q.html;
@@ -687,7 +734,7 @@ function nextQuestion() {
   $('btn-next').style.display='none';
   $('btn-how').style.display='';
   $('method').classList.remove('open');
-  $('pfill').style.width = (cur.i/SESSION_LEN*100)+'%';
+  $('pfill').style.width = (cur.i/cur.len*100)+'%';
   $('streak').textContent = '🔥 '+cur.streak;
 
   const fmt = cur.q.fmt || (v=>v);
@@ -714,16 +761,28 @@ function checkAnswer(btn, val) {
     btn.classList.add('correct');
     document.querySelectorAll('.ans').forEach(b=>b.disabled=true);
     chimeYay();
-    if (!cur.answeredWrong) { cur.correctFirstTry++; cur.streak++; }
+    if (!cur.answeredWrong) {
+      cur.correctFirstTry++; cur.streak++;
+      if (cur.topic === 'tricky') {      // beaten first try — gone for good 🎉
+        const list = trickyList(), idx = list.findIndex(t => t.say === cur.q.say);
+        if (idx > -1) { list.splice(idx, 1); cur.cleared++; store.save(); }
+      }
+    }
     $('streak').textContent = '🔥 '+cur.streak;
-    $('feedback').innerHTML = `<span class="yay">${pick(['Yes! 🎉','Nailed it!','Beautiful!','That’s the one!','Boom! 💪','Lovely work!'])}</span>`;
+    $('feedback').innerHTML = `<span class="yay">${(cur.topic==='tricky' && !cur.answeredWrong) ? pick(['Beaten — gone for good! 🎉','Rematch won! 🥊','That one’s history! ✨']) : pick(['Yes! 🎉','Nailed it!','Beautiful!','That’s the one!','Boom! 💪','Lovely work!'])}</span>`;
     cur.i++;
-    $('pfill').style.width = (cur.i/SESSION_LEN*100)+'%';
+    $('pfill').style.width = (cur.i/cur.len*100)+'%';
     $('btn-next').style.display='';
-    $('btn-next').textContent = cur.i>=SESSION_LEN ? 'Finish ⭐' : 'Next →';
+    $('btn-next').textContent = cur.i>=cur.len ? 'Finish ⭐' : 'Next →';
   } else {
     btn.classList.add('oops'); btn.disabled = true;
     chimeHmm();
+    if (!cur.answeredWrong) {
+      if (cur.topic === 'tricky') {      // missed again — rest it and retry later
+        const item = trickyList().find(t => t.say === cur.q.say);
+        if (item) { item.ts = Date.now(); item.misses++; store.save(); }
+      } else saveTricky();               // quietly into the review pile
+    }
     cur.answeredWrong = true; cur.streak = 0;
     $('streak').textContent = '🔥 0';
     $('feedback').innerHTML = `<span class="again">${pick(['Not that one — no stress, look again 💛','Close! Try another 💛','Have another look — you’ve got this 💛'])}</span>`;
@@ -732,7 +791,7 @@ function checkAnswer(btn, val) {
 }
 
 $('btn-next').onclick = ()=>{
-  if (cur.i >= SESSION_LEN) finishSession(); else nextQuestion();
+  if (cur.i >= cur.len) finishSession(); else nextQuestion();
 };
 $('btn-how').onclick = ()=> { $('method').classList.toggle('open'); };
 $('btn-speak').onclick = ()=> speak(cur.q.say);
@@ -740,23 +799,34 @@ $('btn-home').onclick = ()=> { if (window.speechSynthesis) speechSynthesis.cance
 
 // ---------- finish + celebrate ----------
 function finishSession() {
-  const t = topics[cur.topic];
-  const earned = 1 + (cur.correctFirstTry >= SESSION_LEN ? 2 : cur.correctFirstTry >= SESSION_LEN-2 ? 1 : 0);
+  const isTricky = cur.topic === 'tricky';
+  const tname = isTricky ? 'Tricky Ones' : topics[cur.topic].name;
+  const earned = 1 + (cur.correctFirstTry >= cur.len ? 2 : cur.correctFirstTry >= cur.len-2 ? 1 : 0);
   store.data.stars += earned;
-  const rec = store.data.topics[cur.topic] || {sessions:0, best:0};
-  rec.sessions++; rec.best = Math.max(rec.best, cur.correctFirstTry);
-  store.data.topics[cur.topic] = rec; store.save();
+  if (!isTricky) {
+    const rec = store.data.topics[cur.topic] || {sessions:0, best:0};
+    rec.sessions++; rec.best = Math.max(rec.best, cur.correctFirstTry);
+    store.data.topics[cur.topic] = rec;
+  }
+  store.save();
 
-  $('cele-emoji').textContent = cur.correctFirstTry >= SESSION_LEN ? '🏆' : cur.correctFirstTry >= SESSION_LEN-2 ? '🌟' : '💪';
-  $('cele-title').textContent = cur.correctFirstTry >= SESSION_LEN ? 'Perfect session!' : cur.correctFirstTry >= SESSION_LEN-2 ? 'Brilliant work!' : 'Session done — that counts!';
+  $('cele-emoji').textContent = isTricky ? '🥊' : cur.correctFirstTry >= cur.len ? '🏆' : cur.correctFirstTry >= cur.len-2 ? '🌟' : '💪';
+  $('cele-title').textContent = isTricky ? (cur.cleared === cur.len ? 'All rematches won!' : 'Rematch done!')
+    : cur.correctFirstTry >= cur.len ? 'Perfect session!' : cur.correctFirstTry >= cur.len-2 ? 'Brilliant work!' : 'Session done — that counts!';
   const milestone = Math.floor(store.data.stars/25) > Math.floor((store.data.stars-earned)/25)
     ? ` 🏅 That's your ${Math.floor(store.data.stars/25)*25}-star milestone!` : '';
-  $('cele-msg').textContent = `${cur.correctFirstTry} out of ${SESSION_LEN} first try on ${t.name}. +${earned} star${earned>1?'s':''} ⭐${milestone} Every session is your brain getting stronger.`;
+  $('cele-msg').textContent = isTricky
+    ? `You beat ${cur.cleared} of ${cur.len} tricky one${cur.len>1?'s':''} — gone for good. +${earned} star${earned>1?'s':''} ⭐${milestone} The rest will come back for another go later.`
+    : `${cur.correctFirstTry} out of ${cur.len} first try on ${tname}. +${earned} star${earned>1?'s':''} ⭐${milestone} Every session is your brain getting stronger.`;
   chimeStar(); confettiBurst();
   show('scr-cele');
 }
 $('btn-cele-home').onclick = ()=>{ renderHome(); show('scr-home'); };
-$('btn-cele-again').onclick = ()=> startSession(cur.topic);
+$('btn-cele-again').onclick = ()=>{
+  if (cur.topic === 'tricky') {
+    if (trickyDue().length) startTricky(); else { renderHome(); show('scr-home'); }
+  } else startSession(cur.topic);
+};
 
 // ---------- confetti ----------
 function confettiBurst() {
